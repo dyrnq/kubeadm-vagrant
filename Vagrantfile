@@ -1,13 +1,16 @@
 BOX_IMAGE    = "ubuntu/focal64"
 MASTER_COUNT = 1
-WORKER_COUNT = 2
+WORKER_COUNT = 20
 MASTER_IP    = "192.168.26.10"
 MASTER_PORT  = "8443"
 NODE_IP_NW   = "192.168.26."
 POD_NW_CIDR  = "10.244.0.0/16"
 
-DOCKER_VER = "5:19.03.4~3-0~ubuntu-xenial"
-KUBE_VER   = "1.21.2"
+DOCKER_VER = "20.10.7"
+KUBE_VER   = "1.21.3"
+CONTAINERD_VER = "1.5.5"
+CRIO_VER = "1.20.3"
+NERDCTL_VER = "0.11.0"
 KUBE_TOKEN = "ayngk7.m1555duk5x2i3ctt"
 IMAGE_REPO = "registry.aliyuncs.com/google_containers"
 #IMAGE_REPO = "k8s.gcr.io"
@@ -29,17 +32,15 @@ init_script = <<SCRIPT
 set -eo pipefail
 
 echo "root:vagrant" | sudo chpasswd
-groupadd docker
-usermod -aG docker vagrant
 timedatectl set-timezone "Asia/Shanghai"
 # timedatectl set-local-rtc no
 # timedatectl set-ntp off
 
-sed -i "s@http://.*archive.ubuntu.com@http://repo.huaweicloud.com@g" /etc/apt/sources.list && \
-sed -i "s@http://.*security.ubuntu.com@http://repo.huaweicloud.com@g" /etc/apt/sources.list;
+sed -i "s@http://.*archive.ubuntu.com@http://mirrors.ustc.edu.cn@g" /etc/apt/sources.list && \
+sed -i "s@http://.*security.ubuntu.com@http://mirrors.ustc.edu.cn@g" /etc/apt/sources.list;
 apt update;
 DEBIAN_FRONTEND=noninteractive apt -y upgrade;
-DEBIAN_FRONTEND=noninteractive apt install -y apt-transport-https ca-certificates curl net-tools jq;
+DEBIAN_FRONTEND=noninteractive apt install -y apt-transport-https ca-certificates curl net-tools jq make wget ipvsadm;
 
 cat > /etc/sysctl.d/k8s.conf <<EOF
 net.bridge.bridge-nf-call-ip6tables = 1
@@ -50,9 +51,15 @@ vm.swappiness=0
 EOF
 sysctl --system
 
-curl -fsSL https://ghproxy.com/https://raw.githubusercontent.com/dyrnq/install-docker/main/install-docker.sh | bash -s docker --mirror huaweicloud --version 20.10.7
+cat > /etc/modules-load.d/90-net.conf<<EOF
+overlay
+br_netfilter
+EOF
 
-# retry 3 times
+systemctl daemon-reload
+systemctl enable systemd-modules-load.service && systemctl restart systemd-modules-load.service
+
+# retry three times
 apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 8B57C5C2836F4BEB || \
 apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 8B57C5C2836F4BEB || \
 apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 8B57C5C2836F4BEB
@@ -64,26 +71,79 @@ EOF
 apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet=#{KUBE_VER}-00 kubeadm=#{KUBE_VER}-00 kubectl=#{KUBE_VER}-00
 
 
-sed -i "s@\\"live-restore\\"@\\"exec-opts\\": [\\"native.cgroupdriver=systemd\\"], \\"live-restore\\"@" /etc/docker/daemon.json
-
-mkdir -p /etc/systemd/system/docker.service.d
-
-# https://github.com/kubernetes/kubernetes/issues/45487
-# echo 'User=root' >> /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
-
-
 ip4=\$(ip -o -4 addr list enp0s8 | head -n1 | awk '{print \$4}' |cut -d/ -f1);
 cat > /etc/default/kubelet <<EOF
 KUBELET_EXTRA_ARGS=--fail-swap-on=false --node-ip=\${ip4}
 EOF
 
-
 systemctl daemon-reload
 systemctl enable kubelet && systemctl restart kubelet
-systemctl enable docker && systemctl restart docker
 
+SCRIPT
+
+install_docker = <<SCRIPT
+#!/usr/bin/env bash
+
+groupadd docker
+usermod -aG docker vagrant
+curl -fsSL https://ghproxy.com/https://raw.githubusercontent.com/dyrnq/install-docker/main/install-docker.sh | bash -s docker --mirror huaweicloud --version #{DOCKER_VER}
+sed -i "s@\\"live-restore\\"@\\"exec-opts\\": [\\"native.cgroupdriver=systemd\\"], \\"live-restore\\"@" /etc/docker/daemon.json
+mkdir -p /etc/systemd/system/docker.service.d
+
+systemctl daemon-reload
+systemctl enable docker && systemctl restart docker
 docker pull registry.aliyuncs.com/google_containers/coredns:1.8.0
 docker tag registry.aliyuncs.com/google_containers/coredns:1.8.0 registry.aliyuncs.com/google_containers/coredns:v1.8.0
+
+SCRIPT
+
+
+install_containerd = <<SCRIPT
+#!/usr/bin/env bash
+
+curl -fsSL https://github.com/containerd/containerd/releases/download/v#{CONTAINERD_VER}/cri-containerd-cni-#{CONTAINERD_VER}-linux-amd64.tar.gz | tar xvz -C /
+
+# https://kubernetes.io/docs/setup/production-environment/container-runtimes/#containerd-systemd
+mkdir -p /etc/containerd
+containerd config default | tee /etc/containerd/config.toml
+sed -i "s@SystemdCgroup = false@SystemdCgroup = true@g" /etc/containerd/config.toml
+sed -i "s@k8s.gcr.io\/pause@registry.aliyuncs.com/google_containers\/pause@g" /etc/containerd/config.toml
+
+
+curl -fsSL https://github.com/containerd/nerdctl/releases/download/v#{NERDCTL_VER}/nerdctl-#{NERDCTL_VER}-linux-amd64.tar.gz |tar xvz -C /usr/local/bin nerdctl
+
+
+systemctl daemon-reload
+systemctl enable containerd && systemctl restart containerd
+ctr ns c k8s.io || true
+
+SCRIPT
+
+install_crio = <<SCRIPT
+#!/usr/bin/env bash
+
+curl -fsSL https://storage.googleapis.com/k8s-conform-cri-o/artifacts/cri-o.amd64.v#{CRIO_VER}.tar.gz | tar xvz -C /tmp
+cd /tmp/cri-o && ls -l /tmp/cri-o && make install
+
+sed -i "s@k8s.gcr.io\/pause@registry.aliyuncs.com\/google_containers\/pause@g" /etc/crio/crio.conf
+
+cat > /etc/containers/registries.conf <<EOF
+unqualified-search-registries = ["docker.io","quay.io"]
+
+[[registry]]
+prefix = "docker.io"
+location = "hub-mirror.c.163.com"
+
+[[registry.mirror]]
+location = "fz5yth0r.mirror.aliyuncs.com"
+
+[[registry.mirror]]
+location = "docker.mirrors.ustc.edu.cn"
+
+EOF
+
+systemctl daemon-reload
+systemctl enable crio && systemctl restart crio
 
 SCRIPT
 
@@ -92,7 +152,6 @@ worker_script = <<SCRIPT
 
 set -eo pipefail
 
-apt-get install -y ipvsadm
 
 discovery_token_ca_cert_hash="$(grep 'discovery-token-ca-cert-hash' /vagrant/kubeadm.log | head -n1 | awk '{print $2}')"
 print_join_apiserver="$(grep 'kubeadm join' /vagrant/kubeadm.log  |head -n1 |awk '{print $3}')"
@@ -105,7 +164,6 @@ single_master_script = <<SCRIPT
 
 set -eo pipefail
 
-apt-get install -y ipvsadm
 
 kubeadm reset -f
 
@@ -167,7 +225,7 @@ status() {
 }
 
 status "configuring haproxy and keepalived.."
-apt-get install -y keepalived haproxy ipvsadm
+apt-get install -y keepalived haproxy
 
 systemctl stop keepalived || true
 
@@ -345,6 +403,7 @@ Vagrant.configure("2") do |config|
         vb.customize ["modifyvm", :id, "--cpus", "2"]
         vb.customize ["modifyvm", :id, "--memory", "2048"]
       end
+      subconfig.vm.provision :shell, inline: install_docker
       subconfig.vm.provision :shell, inline: ha ? multi_master_script : single_master_script
     end
   end
@@ -354,6 +413,15 @@ Vagrant.configure("2") do |config|
     config.vm.define(hostname) do |subconfig|
       subconfig.vm.hostname = hostname
       subconfig.vm.network :private_network, nic_type: "virtio", ip: NODE_IP_NW + "#{i + 20}"
+      if i == 1
+        subconfig.vm.provision :shell, inline: install_docker
+      elsif i == 2
+        subconfig.vm.provision :shell, inline: install_containerd
+      elsif i == 3
+        subconfig.vm.provision :shell, inline: install_crio
+      else
+        subconfig.vm.provision :shell, inline: install_docker
+      end
       subconfig.vm.provision :shell, inline: worker_script
     end
   end
