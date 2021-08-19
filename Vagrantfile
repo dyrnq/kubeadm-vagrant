@@ -6,14 +6,16 @@ MASTER_PORT  = "8443"
 NODE_IP_NW   = "192.168.26."
 POD_NW_CIDR  = "10.244.0.0/16"
 
-DOCKER_VER = "20.10.7"
+DOCKER_VER = "20.10.8"
 KUBE_VER   = "1.21.3"
 CONTAINERD_VER = "1.5.5"
 CRIO_VER = "1.20.3"
 NERDCTL_VER = "0.11.0"
+HELM_VER = "3.6.3"
 KUBE_TOKEN = "ayngk7.m1555duk5x2i3ctt"
 IMAGE_REPO = "registry.aliyuncs.com/google_containers"
 #IMAGE_REPO = "k8s.gcr.io"
+DNS_IMAGE_REPO = "docker.io/dyrnq"
 POD_NETWORK = "/vagrant/kube-calico.yaml"
 #POD_NETWORK = "/vagrant/kube-flannel.yml"
 
@@ -79,6 +81,9 @@ EOF
 systemctl daemon-reload
 systemctl enable kubelet && systemctl restart kubelet
 
+curl --retry 3 -fssL -o /tmp/helm.tar.gz https://get.helm.sh/helm-v#{HELM_VER}-linux-amd64.tar.gz
+tar -xv --wildcards -C /usr/bin --strip-components=1 -f /tmp/helm.tar.gz */helm
+
 SCRIPT
 
 install_docker = <<SCRIPT
@@ -92,8 +97,6 @@ mkdir -p /etc/systemd/system/docker.service.d
 
 systemctl daemon-reload
 systemctl enable docker && systemctl restart docker
-docker pull registry.aliyuncs.com/google_containers/coredns:1.8.0
-docker tag registry.aliyuncs.com/google_containers/coredns:1.8.0 registry.aliyuncs.com/google_containers/coredns:v1.8.0
 
 SCRIPT
 
@@ -101,7 +104,9 @@ SCRIPT
 install_containerd = <<SCRIPT
 #!/usr/bin/env bash
 
-curl -fsSL https://github.com/containerd/containerd/releases/download/v#{CONTAINERD_VER}/cri-containerd-cni-#{CONTAINERD_VER}-linux-amd64.tar.gz | tar xvz -C /
+curl --retry 3 -o /tmp/cri-containerd-cni-#{CONTAINERD_VER}-linux-amd64.tar.gz -SL --compressed --progress-bar https://github.com/containerd/containerd/releases/download/v#{CONTAINERD_VER}/cri-containerd-cni-#{CONTAINERD_VER}-linux-amd64.tar.gz
+
+tar -xv -C / -f /tmp/cri-containerd-cni-#{CONTAINERD_VER}-linux-amd64.tar.gz
 
 # https://kubernetes.io/docs/setup/production-environment/container-runtimes/#containerd-systemd
 mkdir -p /etc/containerd
@@ -195,6 +200,8 @@ kubernetesVersion: v#{KUBE_VER}
 imageRepository: #{IMAGE_REPO}
 networking:
   podSubnet: #{POD_NW_CIDR}
+dns:
+  imageRepository: #{DNS_IMAGE_REPO}
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
@@ -340,6 +347,8 @@ controlPlaneEndpoint: "#{MASTER_IP}:#{MASTER_PORT}"
 imageRepository: #{IMAGE_REPO}
 networking:
   podSubnet: #{POD_NW_CIDR}
+dns:
+  imageRepository: #{DNS_IMAGE_REPO}
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
