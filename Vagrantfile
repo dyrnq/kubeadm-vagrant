@@ -1,6 +1,6 @@
 BOX_IMAGE    = "ubuntu/focal64"
 MASTER_COUNT = 1
-WORKER_COUNT = 20
+WORKER_COUNT = 3
 MASTER_IP    = "192.168.26.10"
 MASTER_PORT  = "8443"
 NODE_IP_NW   = "192.168.26."
@@ -335,7 +335,7 @@ apiVersion: kubeadm.k8s.io/v1beta2
 kind: InitConfiguration
 bootstrapTokens:
 - token: #{KUBE_TOKEN}
-  ttl: 24h
+  ttl: 0h
 localAPIEndpoint:
   advertiseAddress: ${vrrp_ip}
   bindPort: 6443
