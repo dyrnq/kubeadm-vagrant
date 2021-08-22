@@ -18,7 +18,7 @@ IMAGE_REPO = "registry.aliyuncs.com/google_containers"
 DNS_IMAGE_REPO = "docker.io/dyrnq"
 POD_NETWORK = "/vagrant/kube-calico.yaml"
 #POD_NETWORK = "/vagrant/kube-flannel.yml"
-
+CURL_EXTRA_ARGS = ""
 def gen_haproxy_backend(master_count)
   server=""
   (1..master_count).each do |i|
@@ -81,7 +81,7 @@ EOF
 systemctl daemon-reload
 systemctl enable kubelet && systemctl restart kubelet
 
-curl --retry 3 -fssL -o /tmp/helm.tar.gz https://get.helm.sh/helm-v#{HELM_VER}-linux-amd64.tar.gz
+curl #{CURL_EXTRA_ARGS} --retry 3 -fssL -o /tmp/helm.tar.gz https://get.helm.sh/helm-v#{HELM_VER}-linux-amd64.tar.gz
 tar -xv --wildcards -C /usr/bin --strip-components=1 -f /tmp/helm.tar.gz */helm
 
 SCRIPT
@@ -104,7 +104,7 @@ SCRIPT
 install_containerd = <<SCRIPT
 #!/usr/bin/env bash
 
-curl --retry 3 -o /tmp/cri-containerd-cni-#{CONTAINERD_VER}-linux-amd64.tar.gz -SL --compressed --progress-bar https://github.com/containerd/containerd/releases/download/v#{CONTAINERD_VER}/cri-containerd-cni-#{CONTAINERD_VER}-linux-amd64.tar.gz
+curl #{CURL_EXTRA_ARGS} --retry 3 -o /tmp/cri-containerd-cni-#{CONTAINERD_VER}-linux-amd64.tar.gz -SL --compressed --progress-bar https://github.com/containerd/containerd/releases/download/v#{CONTAINERD_VER}/cri-containerd-cni-#{CONTAINERD_VER}-linux-amd64.tar.gz
 
 tar -xv -C / -f /tmp/cri-containerd-cni-#{CONTAINERD_VER}-linux-amd64.tar.gz
 
@@ -115,7 +115,7 @@ sed -i "s@SystemdCgroup = false@SystemdCgroup = true@g" /etc/containerd/config.t
 sed -i "s@k8s.gcr.io\/pause@registry.aliyuncs.com/google_containers\/pause@g" /etc/containerd/config.toml
 
 
-curl -fsSL https://github.com/containerd/nerdctl/releases/download/v#{NERDCTL_VER}/nerdctl-#{NERDCTL_VER}-linux-amd64.tar.gz |tar xvz -C /usr/local/bin nerdctl
+curl #{CURL_EXTRA_ARGS} -fsSL https://github.com/containerd/nerdctl/releases/download/v#{NERDCTL_VER}/nerdctl-#{NERDCTL_VER}-linux-amd64.tar.gz |tar xvz -C /usr/local/bin nerdctl
 
 
 systemctl daemon-reload
@@ -127,7 +127,8 @@ SCRIPT
 install_crio = <<SCRIPT
 #!/usr/bin/env bash
 
-curl -fsSL https://storage.googleapis.com/k8s-conform-cri-o/artifacts/cri-o.amd64.v#{CRIO_VER}.tar.gz | tar xvz -C /tmp
+curl #{CURL_EXTRA_ARGS} --retry 3 -o /tmp/cri-o.amd64.v#{CRIO_VER}.tar.gz -SL --compressed --progress-bar https://storage.googleapis.com/k8s-conform-cri-o/artifacts/cri-o.amd64.v#{CRIO_VER}.tar.gz
+tar -xv -C /tmp -f /tmp/cri-o.amd64.v#{CRIO_VER}.tar.gz
 cd /tmp/cri-o && ls -l /tmp/cri-o && make install
 
 sed -i "s@k8s.gcr.io\/pause@registry.aliyuncs.com\/google_containers\/pause@g" /etc/crio/crio.conf
