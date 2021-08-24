@@ -5,6 +5,7 @@ MASTER_IP    = "192.168.26.10"
 MASTER_PORT  = "8443"
 NODE_IP_NW   = "192.168.26."
 POD_NW_CIDR  = "10.244.0.0/16"
+SVC_NW_CIDR  = "10.96.0.0/12"
 
 DOCKER_VER = "20.10.8"
 KUBE_VER   = "1.21.3"
@@ -201,6 +202,7 @@ kubernetesVersion: v#{KUBE_VER}
 imageRepository: #{IMAGE_REPO}
 networking:
   podSubnet: #{POD_NW_CIDR}
+  serviceSubnet: #{SVC_NW_CIDR}
 dns:
   imageRepository: #{DNS_IMAGE_REPO}
 ---
@@ -348,6 +350,7 @@ controlPlaneEndpoint: "#{MASTER_IP}:#{MASTER_PORT}"
 imageRepository: #{IMAGE_REPO}
 networking:
   podSubnet: #{POD_NW_CIDR}
+  serviceSubnet: #{SVC_NW_CIDR}
 dns:
   imageRepository: #{DNS_IMAGE_REPO}
 ---
