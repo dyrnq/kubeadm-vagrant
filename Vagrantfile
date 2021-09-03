@@ -10,7 +10,7 @@ SVC_NW_CIDR  = "10.96.0.0/12"
 DOCKER_VER = "20.10.8"
 KUBE_VER   = "1.21.3"
 CONTAINERD_VER = "1.5.5"
-CRIO_VER = "1.20.3"
+CRIO_VER = "1.22.0"
 NERDCTL_VER = "0.11.0"
 HELM_VER = "3.6.3"
 KUBE_TOKEN = "ayngk7.m1555duk5x2i3ctt"
@@ -127,12 +127,34 @@ SCRIPT
 
 install_crio = <<SCRIPT
 #!/usr/bin/env bash
+criourl="https://storage.googleapis.com/k8s-conform-cri-o/artifacts/cri-o.amd64.v#{CRIO_VER}.tar.gz"
 
-curl #{CURL_EXTRA_ARGS} --retry 3 -o /tmp/cri-o.amd64.v#{CRIO_VER}.tar.gz -SL --compressed --progress-bar https://storage.googleapis.com/k8s-conform-cri-o/artifacts/cri-o.amd64.v#{CRIO_VER}.tar.gz
+if [ "#{CRIO_VER}" = "1.22.0" ] ; then
+  criourl="https://storage.googleapis.com/cri-o/artifacts/cri-o.amd64.6becad23eadd7dfdd25fd8df386bf3b706cf7758.tar.gz"
+elif [ "#{CRIO_VER}" = "1.21.2" ] ; then
+  criourl="https://storage.googleapis.com/k8s-conform-cri-o/artifacts/cri-o.amd64.b27d974e13c3f9e2baa2d848ca554c80434ea88c.tar.gz"
+fi
+
+curl #{CURL_EXTRA_ARGS} --retry 3 -o /tmp/cri-o.amd64.v#{CRIO_VER}.tar.gz -SL --compressed --progress-bar $criourl
+
 tar -xv -C /tmp -f /tmp/cri-o.amd64.v#{CRIO_VER}.tar.gz
-cd /tmp/cri-o && ls -l /tmp/cri-o && make install
 
-sed -i "s@k8s.gcr.io\/pause@registry.aliyuncs.com\/google_containers\/pause@g" /etc/crio/crio.conf
+pushd /tmp/cri-o > /dev/null || exit
+ls -l .
+if [ -f install ]; then
+  bash install
+else
+  make install
+fi
+popd > /dev/null || exit
+
+cat /dev/null > /etc/crio/crio.conf
+
+mkdir -p /etc/crio/crio.conf.d/
+cat > /etc/crio/crio.conf.d/01-pause-image.conf <<EOF
+[crio.image]
+pause_image = "registry.aliyuncs.com/google_containers/pause:3.5"
+EOF
 
 cat > /etc/containers/registries.conf <<EOF
 unqualified-search-registries = ["docker.io","quay.io"]
