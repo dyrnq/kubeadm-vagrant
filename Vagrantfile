@@ -205,6 +205,9 @@ networking:
   serviceSubnet: #{SVC_NW_CIDR}
 dns:
   imageRepository: #{DNS_IMAGE_REPO}
+controllerManager:
+  extraArgs:
+    cluster-signing-duration: 438000h
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
@@ -353,6 +356,9 @@ networking:
   serviceSubnet: #{SVC_NW_CIDR}
 dns:
   imageRepository: #{DNS_IMAGE_REPO}
+controllerManager:
+  extraArgs:
+    cluster-signing-duration: 438000h
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
