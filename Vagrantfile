@@ -212,6 +212,14 @@ controllerManager:
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
 mode: "ipvs"
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+failSwapOn: false
+evictionHard:
+  memory.available: "200Mi"
+clusterDNS:
+  - 10.96.0.10
 EOF
 
 #controlPlaneEndpoint: "#{MASTER_IP}:#{MASTER_PORT}"
@@ -363,6 +371,14 @@ controllerManager:
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
 mode: "ipvs"
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+failSwapOn: false
+evictionHard:
+  memory.available: "200Mi"
+clusterDNS:
+  - 10.96.0.10
 EOF
 
   status "running kubeadm init on the first master node.."
