@@ -42,6 +42,7 @@ timedatectl set-timezone "Asia/Shanghai"
 sed -i "s@http://.*archive.ubuntu.com@http://mirrors.ustc.edu.cn@g" /etc/apt/sources.list && \
 sed -i "s@http://.*security.ubuntu.com@http://mirrors.ustc.edu.cn@g" /etc/apt/sources.list;
 apt update;
+apt-mark hold linux-image-generic linux-headers-generic
 DEBIAN_FRONTEND=noninteractive apt -y upgrade;
 DEBIAN_FRONTEND=noninteractive apt install -y apt-transport-https ca-certificates curl net-tools jq make wget ipvsadm conntrack;
 
