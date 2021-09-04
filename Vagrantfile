@@ -238,6 +238,7 @@ mode: "ipvs"
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 failSwapOn: false
+serverTLSBootstrap: true
 evictionHard:
   memory.available: "200Mi"
 clusterDNS:
@@ -397,6 +398,7 @@ mode: "ipvs"
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 failSwapOn: false
+serverTLSBootstrap: true
 evictionHard:
   memory.available: "200Mi"
 clusterDNS:
