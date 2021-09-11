@@ -3,6 +3,7 @@ MASTER_COUNT = 1
 WORKER_COUNT = 3
 MASTER_IP    = "192.168.26.10"
 MASTER_PORT  = "8443"
+NODE_INTERFACE = "enp0s8"
 NODE_IP_NW   = "192.168.26."
 POD_NW_CIDR  = "10.244.0.0/16"
 SVC_NW_CIDR  = "10.96.0.0/12"
@@ -74,7 +75,7 @@ EOF
 apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet=#{KUBE_VER}-00 kubeadm=#{KUBE_VER}-00 kubectl=#{KUBE_VER}-00
 
 
-ip4=\$(ip -o -4 addr list enp0s8 | head -n1 | awk '{print \$4}' |cut -d/ -f1);
+ip4=\$(ip -o -4 addr list #{NODE_INTERFACE} | head -n1 | awk '{print \$4}' |cut -d/ -f1);
 cat > /etc/default/kubelet <<EOF
 KUBELET_EXTRA_ARGS=--fail-swap-on=false --node-ip=\${ip4}
 EOF
@@ -206,7 +207,7 @@ openssl genrsa -out etcd/ca.key 4096
 openssl req -x509 -new -nodes -sha512 -subj "/CN=etcd-ca" -key etcd/ca.key -out etcd/ca.crt -days 73000
 ls -l /etc/kubernetes/pki
 
-ip4=\$(ip -o -4 addr list enp0s8 | head -n1 | awk '{print \$4}' |cut -d/ -f1);
+ip4=\$(ip -o -4 addr list #{NODE_INTERFACE} | head -n1 | awk '{print \$4}' |cut -d/ -f1);
 
 cat > /tmp/kubeadm-config.yaml <<EOF
 apiVersion: kubeadm.k8s.io/v1beta2
@@ -273,11 +274,11 @@ apt-get install -y keepalived haproxy
 
 systemctl stop keepalived || true
 
-vrrp_if=$(ip a | grep 192.168.26 | awk '{print $7}')
-vrrp_ip=$(ip a | grep 192.168.26 | awk '{split($2, a, "/"); print a[1]}')
+ip4=\$(ip -o -4 addr list #{NODE_INTERFACE} | head -n1 | awk '{print \$4}' |cut -d/ -f1);
+
 vrrp_state="BACKUP"
 vrrp_priority="100"
-if [ "${vrrp_ip}" = "#{NODE_IP_NW}11" ]; then
+if [ "${ip4}" = "#{NODE_IP_NW}11" ]; then
   vrrp_state="MASTER"
   vrrp_priority="101"
 fi
@@ -295,8 +296,8 @@ vrrp_script check_apiserver {
 }
 vrrp_instance VI_1 {
     state ${vrrp_state}
-    interface ${vrrp_if}
-    mcast_src_ip ${vrrp_ip}
+    interface #{NODE_INTERFACE}
+    mcast_src_ip ${ip4}
     virtual_router_id 51
     priority ${vrrp_priority}
     advert_int 2
@@ -374,7 +375,7 @@ bootstrapTokens:
 - token: #{KUBE_TOKEN}
   ttl: 0h
 localAPIEndpoint:
-  advertiseAddress: ${vrrp_ip}
+  advertiseAddress: ${ip4}
   bindPort: 6443
 ---
 apiVersion: kubeadm.k8s.io/v1beta2
@@ -438,7 +439,7 @@ else
   kubeadm join #{MASTER_IP}:#{MASTER_PORT} --token #{KUBE_TOKEN} \
     --discovery-token-ca-cert-hash ${discovery_token_ca_cert_hash} \
     --control-plane --certificate-key ${certificate_key} \
-    --apiserver-advertise-address ${vrrp_ip}
+    --apiserver-advertise-address ${ip4}
 fi
 SCRIPT
 
