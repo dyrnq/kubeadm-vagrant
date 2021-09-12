@@ -1,8 +1,8 @@
 BOX_IMAGE    = "ubuntu/focal64"
 MASTER_COUNT = 1
 WORKER_COUNT = 3
-MASTER_IP    = "192.168.26.10"
-MASTER_PORT  = "8443"
+LOAD_BALANCER_IP    = "192.168.26.10"
+LOAD_BALANCER_PORT  = "8443"
 NODE_INTERFACE = "enp0s8"
 NODE_IP_NW   = "192.168.26."
 POD_NW_CIDR  = "10.244.0.0/16"
@@ -246,7 +246,7 @@ clusterDNS:
   - 10.96.0.10
 EOF
 
-#controlPlaneEndpoint: "#{MASTER_IP}:#{MASTER_PORT}"
+#controlPlaneEndpoint: "#{LOAD_BALANCER_IP}:#{LOAD_BALANCER_PORT}"
 kubeadm init --config=/tmp/kubeadm-config.yaml | tee /vagrant/kubeadm.log
 
 mkdir -p $HOME/.kube
@@ -306,7 +306,7 @@ vrrp_instance VI_1 {
         auth_pass a6E/CHhJkCn1Ww1gF3qPiJTKTEc=
     }
     virtual_ipaddress {
-        #{MASTER_IP}
+        #{LOAD_BALANCER_IP}
     }
     track_script {
        check_apiserver
@@ -323,8 +323,8 @@ errorExit() {
 }
 
 curl --silent --max-time 2 --insecure https://localhost:6443/ -o /dev/null || errorExit "Error GET https://localhost:6443/"
-if ip addr | grep -q #{MASTER_IP}; then
-  curl --silent --max-time 2 --insecure https://#{MASTER_IP}:#{MASTER_PORT}/ -o /dev/null || errorExit "Error GET https://#{MASTER_IP}:#{MASTER_PORT}/"
+if ip addr | grep -q #{LOAD_BALANCER_IP}; then
+  curl --silent --max-time 2 --insecure https://#{LOAD_BALANCER_IP}:#{LOAD_BALANCER_PORT}/ -o /dev/null || errorExit "Error GET https://#{LOAD_BALANCER_IP}:#{LOAD_BALANCER_PORT}/"
 fi
 EOF
 
@@ -357,7 +357,7 @@ listen stats
     stats uri /stats
 
 listen kube-api-server
-    bind #{MASTER_IP}:#{MASTER_PORT}
+    bind #{LOAD_BALANCER_IP}:#{LOAD_BALANCER_PORT}
     mode tcp
     option tcplog
     balance roundrobin
@@ -381,7 +381,7 @@ localAPIEndpoint:
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: ClusterConfiguration
 kubernetesVersion: v#{KUBE_VER}
-controlPlaneEndpoint: "#{MASTER_IP}:#{MASTER_PORT}"
+controlPlaneEndpoint: "#{LOAD_BALANCER_IP}:#{LOAD_BALANCER_PORT}"
 imageRepository: #{IMAGE_REPO}
 networking:
   podSubnet: #{POD_NW_CIDR}
@@ -436,7 +436,7 @@ else
   discovery_token_ca_cert_hash="$(grep 'discovery-token-ca-cert-hash' /vagrant/kubeadm.log | head -n1 | awk '{print $2}')"
   certificate_key="$(grep 'certificate-key' /vagrant/kubeadm.log | head -n1 | awk '{print $3}')"
   kubeadm reset -f
-  kubeadm join #{MASTER_IP}:#{MASTER_PORT} --token #{KUBE_TOKEN} \
+  kubeadm join #{LOAD_BALANCER_IP}:#{LOAD_BALANCER_PORT} --token #{KUBE_TOKEN} \
     --discovery-token-ca-cert-hash ${discovery_token_ca_cert_hash} \
     --control-plane --certificate-key ${certificate_key} \
     --apiserver-advertise-address ${ip4}
