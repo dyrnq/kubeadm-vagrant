@@ -198,14 +198,16 @@ set -eo pipefail
 kubeadm reset -f
 
 mkdir -p /etc/kubernetes/pki/etcd
-cd /etc/kubernetes/pki
+pushd /etc/kubernetes/pki > /dev/null || exit
 openssl genrsa -out ca.key 4096
 openssl req -x509 -new -nodes -sha512 -subj "/CN=kubernetes-ca" -key ca.key -out ca.crt -days 73000
 openssl genrsa -out front-proxy-ca.key 4096
 openssl req -x509 -new -nodes -sha512 -subj "/CN=front-proxy-ca" -key front-proxy-ca.key -out front-proxy-ca.crt -days 73000
 openssl genrsa -out etcd/ca.key 4096
 openssl req -x509 -new -nodes -sha512 -subj "/CN=etcd-ca" -key etcd/ca.key -out etcd/ca.crt -days 73000
+popd > /dev/null || exit
 ls -l /etc/kubernetes/pki
+
 
 ip4=\$(ip -o -4 addr list #{NODE_INTERFACE} | head -n1 | awk '{print \$4}' |cut -d/ -f1);
 
@@ -410,13 +412,14 @@ EOF
   kubeadm reset -f
 
   mkdir -p /etc/kubernetes/pki/etcd
-  cd /etc/kubernetes/pki
+  pushd /etc/kubernetes/pki > /dev/null || exit
   openssl genrsa -out ca.key 4096
   openssl req -x509 -new -nodes -sha512 -subj "/CN=kubernetes-ca" -key ca.key -out ca.crt -days 73000
   openssl genrsa -out front-proxy-ca.key 4096
   openssl req -x509 -new -nodes -sha512 -subj "/CN=front-proxy-ca" -key front-proxy-ca.key -out front-proxy-ca.crt -days 73000
   openssl genrsa -out etcd/ca.key 4096
   openssl req -x509 -new -nodes -sha512 -subj "/CN=etcd-ca" -key etcd/ca.key -out etcd/ca.crt -days 73000
+  popd > /dev/null || exit
   ls -l /etc/kubernetes/pki
 
   kubeadm init --config=/tmp/kubeadm-config.yaml --upload-certs | tee /vagrant/kubeadm.log
