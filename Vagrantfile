@@ -121,6 +121,9 @@ containerd config default | tee /etc/containerd/config.toml
 sed -i "s@SystemdCgroup = false@SystemdCgroup = true@g" /etc/containerd/config.toml
 sed -i "s@k8s.gcr.io\/pause@registry.aliyuncs.com/google_containers\/pause@g" /etc/containerd/config.toml
 
+if [ -f /etc/cni/net.d/10-containerd-net.conflist ]; then
+  rm -rf /etc/cni/net.d/10-containerd-net.conflist;
+fi
 
 curl #{CURL_EXTRA_ARGS} -fsSL https://github.com/containerd/nerdctl/releases/download/v#{NERDCTL_VER}/nerdctl-#{NERDCTL_VER}-linux-amd64.tar.gz |tar xvz -C /usr/local/bin nerdctl
 
