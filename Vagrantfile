@@ -137,12 +137,7 @@ SCRIPT
 install_crio = <<SCRIPT
 #!/usr/bin/env bash
 criourl="https://storage.googleapis.com/k8s-conform-cri-o/artifacts/cri-o.amd64.v#{CRIO_VER}.tar.gz"
-
-if [ "#{CRIO_VER}" = "1.22.0" ] ; then
-  criourl="https://storage.googleapis.com/cri-o/artifacts/cri-o.amd64.6becad23eadd7dfdd25fd8df386bf3b706cf7758.tar.gz"
-elif [ "#{CRIO_VER}" = "1.21.2" ] ; then
-  criourl="https://storage.googleapis.com/k8s-conform-cri-o/artifacts/cri-o.amd64.b27d974e13c3f9e2baa2d848ca554c80434ea88c.tar.gz"
-fi
+criourl=$(curl -fsSL https://api.github.com/repos/cri-o/cri-o/releases/tags/v#{CRIO_VER} | jq '.body' | grep -oP "https[^ ]*\.gz" | grep amd64)
 
 curl #{CURL_EXTRA_ARGS} --retry 3 -o /tmp/cri-o.amd64.v#{CRIO_VER}.tar.gz -SL --compressed --progress-bar $criourl
 
@@ -179,6 +174,10 @@ location = "fz5yth0r.mirror.aliyuncs.com"
 location = "docker.mirrors.ustc.edu.cn"
 
 EOF
+
+if [ -f /etc/cni/net.d/10-crio-bridge.conf ]; then
+  rm -rf /etc/cni/net.d/10-crio-bridge.conf;
+fi
 
 systemctl daemon-reload
 systemctl enable crio && systemctl restart crio
