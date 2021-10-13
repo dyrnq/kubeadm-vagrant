@@ -11,6 +11,7 @@ SVC_NW_CIDR  = "10.96.0.0/12"
 DOCKER_VER = "20.10.8"
 KUBE_VER   = "1.21.3"
 CONTAINERD_VER = "1.5.7"
+BUILDKIT_VER = "0.9.1"
 CRIO_VER = "1.22.0"
 NERDCTL_VER = "0.11.0"
 HELM_VER = "3.6.3"
@@ -127,9 +128,46 @@ fi
 
 curl #{CURL_EXTRA_ARGS} -fsSL https://github.com/containerd/nerdctl/releases/download/v#{NERDCTL_VER}/nerdctl-#{NERDCTL_VER}-linux-amd64.tar.gz |tar xvz -C /usr/local/bin nerdctl
 
+curl #{CURL_EXTRA_ARGS} --retry 3 -o /tmp/buildkit-v#{BUILDKIT_VER}.linux-amd64.tar.gz -fsSL https://github.com/moby/buildkit/releases/download/v#{BUILDKIT_VER}/buildkit-v#{BUILDKIT_VER}.linux-amd64.tar.gz
+
+tar -xv --strip-components 1 -C /usr/local/bin/ -f /tmp/buildkit-v#{BUILDKIT_VER}.linux-amd64.tar.gz
+
+cat > /usr/lib/systemd/system/buildkit.service << EOF
+[Unit]
+Description=BuildKit
+Requires=buildkit.socket
+After=buildkit.socket
+Documentation=https://github.com/moby/buildkit
+
+[Service]
+ExecStart=/usr/local/bin/buildkitd --addr fd:// --containerd-worker=true --oci-worker=false
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /usr/lib/systemd/system/buildkit.socket <<EOF
+[Unit]
+Description=BuildKit
+Documentation=https://github.com/moby/buildkit
+
+[Socket]
+ListenStream=%t/buildkit/buildkitd.sock
+SocketMode=0660
+SocketUser=root
+SocketGroup=buildkit
+
+[Install]
+WantedBy=sockets.target
+EOF
+
+
+groupadd buildkit >/dev/null 2>&1  || true
+usermod -aG buildkit vagrant
 
 systemctl daemon-reload
 systemctl enable containerd && systemctl restart containerd
+systemctl enable buildkit && systemctl restart buildkit
 ctr ns c k8s.io || true
 
 SCRIPT
