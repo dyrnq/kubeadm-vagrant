@@ -122,6 +122,9 @@ containerd config default | tee /etc/containerd/config.toml
 sed -i "s@SystemdCgroup = false@SystemdCgroup = true@g" /etc/containerd/config.toml
 sed -i "s@k8s.gcr.io\/pause@registry.aliyuncs.com/google_containers\/pause@g" /etc/containerd/config.toml
 
+keyline=\$(cat /etc/containerd/config.toml | grep -n "grpc" | head -1 | cut -d ":" -f 1)
+sed -i "\${keyline},28s|gid = 0|gid = 5000|" /etc/containerd/config.toml
+
 if [ -f /etc/cni/net.d/10-containerd-net.conflist ]; then
   rm -rf /etc/cni/net.d/10-containerd-net.conflist;
 fi
@@ -155,15 +158,15 @@ Documentation=https://github.com/moby/buildkit
 ListenStream=%t/buildkit/buildkitd.sock
 SocketMode=0660
 SocketUser=root
-SocketGroup=buildkit
+SocketGroup=docker
 
 [Install]
 WantedBy=sockets.target
 EOF
 
 
-groupadd buildkit >/dev/null 2>&1  || true
-usermod -aG buildkit vagrant
+groupadd --gid 5000 docker >/dev/null 2>&1  || true
+usermod -aG docker vagrant
 
 systemctl daemon-reload
 systemctl enable containerd && systemctl restart containerd
