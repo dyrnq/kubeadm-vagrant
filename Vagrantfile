@@ -8,7 +8,7 @@ NODE_IP_NW   = "192.168.26."
 POD_NW_CIDR  = "10.244.0.0/16"
 SVC_NW_CIDR  = "10.96.0.0/12"
 
-DOCKER_VER = "20.10.8"
+DOCKER_VER = "20.10.11"
 KUBE_VER   = "1.21.3"
 CONTAINERD_VER = "1.5.8"
 BUILDKIT_VER = "0.9.1"
@@ -99,7 +99,7 @@ install_docker = <<SCRIPT
 
 groupadd docker
 usermod -aG docker vagrant
-curl -fsSL https://ghproxy.com/https://raw.githubusercontent.com/dyrnq/install-docker/main/install-docker.sh | bash -s docker --mirror huaweicloud --version #{DOCKER_VER}
+curl -fsSL https://ghproxy.com/https://raw.githubusercontent.com/dyrnq/install-docker/main/install-docker.sh | bash -s docker --mirror tencent --version #{DOCKER_VER}
 sed -i "s@\\"live-restore\\"@\\"exec-opts\\": [\\"native.cgroupdriver=systemd\\"], \\"live-restore\\"@" /etc/docker/daemon.json
 mkdir -p /etc/systemd/system/docker.service.d
 
