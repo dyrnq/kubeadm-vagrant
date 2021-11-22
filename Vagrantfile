@@ -89,7 +89,7 @@ EOF
 systemctl daemon-reload
 systemctl enable kubelet && systemctl restart kubelet
 
-curl #{CURL_EXTRA_ARGS} --retry 3 -fssL -o /tmp/helm.tar.gz https://get.helm.sh/helm-v#{HELM_VER}-linux-amd64.tar.gz
+curl #{CURL_EXTRA_ARGS} --retry 3 -SL --compressed --progress-bar -o /tmp/helm.tar.gz https://get.helm.sh/helm-v#{HELM_VER}-linux-amd64.tar.gz
 tar -xv --wildcards -C /usr/bin --strip-components=1 -f /tmp/helm.tar.gz */helm
 
 cat <<EOF | tee -a /etc/multipath.conf
