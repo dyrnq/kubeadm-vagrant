@@ -220,7 +220,7 @@ location = "docker.io"
 
 [[registry.mirror]]
 prefix = "docker.io"
-location = "fz5yth0r.mirror.aliyuncs.com"
+location = "docker.mirrors.ustc.edu.cn"
 
 EOF
 
