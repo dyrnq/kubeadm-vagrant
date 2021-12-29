@@ -13,7 +13,7 @@ Run kubernetes cluster with kubeadm on vagrant.
 
 ### Single-Master
 
-change `MASTER_COUNT` to `1` to run a Single-Master.
+Change `MASTER_COUNT` to `1` to run a Single-Master.
 
 ```bash
 vagrant up master1 worker1
@@ -25,7 +25,7 @@ kubectl get nodes
 
 ### Multi-Master
 
-change `MASTER_COUNT` to `3` to run a Multi-Master cluster.
+Change `MASTER_COUNT` to `3` to run a Multi-Master cluster.
 
 ```bash
 vagrant up master1 master2 master3 worker1
@@ -37,14 +37,19 @@ kubectl get nodes
 
 ## Pod Network
 
-change `POD_NETWORK` to `/vagrant/kube-calico.yaml` to run use calico.
+> **Reference:** [Installing a Pod network add-on](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#pod-network)
 
-change `POD_NETWORK` to `/vagrant/kube-flannel.yml` to run use flannel.
+### calico
 
-- Reference: [Installing a Pod network add-on](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#pod-network)
-- [https://github.com/flannel-io/flannel/blob/master/Documentation/kube-flannel.yml](https://github.com/flannel-io/flannel/blob/master/Documentation/kube-flannel.yml)
-- `kube-flannel.yml` changes: added the `--iface` option ([ref](https://github.com/coreos/flannel/blob/master/Documentation/troubleshooting.md#vagrant))
-- [https://docs.projectcalico.org/manifests/calico.yaml](https://docs.projectcalico.org/manifests/calico.yaml)
+Change `POD_NETWORK` to `/vagrant/kube-calico.yaml` to run use calico. See origin [calico.yaml](https://docs.projectcalico.org/manifests/calico.yaml)
+
+`kube-calico.yml` changes: explicitly assign env `CALICO_IPV4POOL_CIDR` and `IP_AUTODETECTION_METHOD`
+
+### flannel
+
+Change `POD_NETWORK` to `/vagrant/kube-flannel.yml` to run use flannel. See origin [kube-flannel.yml](https://github.com/flannel-io/flannel/blob/master/Documentation/kube-flannel.yml)
+
+`kube-flannel.yml` changes: added the `--iface` option ([ref](https://github.com/coreos/flannel/blob/master/Documentation/troubleshooting.md#vagrant))
 
 ## Ref
 
