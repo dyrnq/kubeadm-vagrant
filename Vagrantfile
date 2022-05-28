@@ -109,7 +109,7 @@ install_docker = <<SCRIPT
 
 groupadd docker
 usermod -aG docker vagrant
-curl -fsSL https://ghproxy.com/https://raw.githubusercontent.com/dyrnq/install-docker/main/install-docker.sh | bash -s docker --mirror tencent --version #{DOCKER_VER}
+curl -fsSL https://ghproxy.com/https://raw.githubusercontent.com/dyrnq/install-docker/main/install-docker.sh | bash -s docker --mirror tencent --systemd-mirror ghproxy --version #{DOCKER_VER}
 sed -i "s@\\"live-restore\\"@\\"exec-opts\\": [\\"native.cgroupdriver=systemd\\"], \\"live-restore\\"@" /etc/docker/daemon.json
 mkdir -p /etc/systemd/system/docker.service.d
 
