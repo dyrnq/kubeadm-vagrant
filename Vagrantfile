@@ -289,6 +289,13 @@ dns:
 controllerManager:
   extraArgs:
     cluster-signing-duration: 438000h
+    v: "4"
+scheduler:
+  extraArgs:
+    v: "4"
+apiServer:
+  extraArgs:
+    v: "4"
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
@@ -449,6 +456,13 @@ dns:
 controllerManager:
   extraArgs:
     cluster-signing-duration: 438000h
+    v: "4"
+scheduler:
+  extraArgs:
+    v: "4"
+apiServer:
+  extraArgs:
+    v: "4"
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
