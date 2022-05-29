@@ -76,7 +76,7 @@ apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 8B57C5C2836F4BEB
 
 curl -s https://repo.huaweicloud.com/kubernetes/apt/doc/apt-key.gpg | apt-key add -
 cat > /etc/apt/sources.list.d/kubernetes.list <<EOF
-deb https://mirrors.tuna.tsinghua.edu.cn/kubernetes/apt kubernetes-xenial main
+deb https://mirrors.ustc.edu.cn/kubernetes/apt kubernetes-xenial main
 EOF
 apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet=#{KUBE_VER}-00 kubeadm=#{KUBE_VER}-00 kubectl=#{KUBE_VER}-00
 
