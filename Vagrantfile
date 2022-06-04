@@ -9,6 +9,7 @@ POD_NW_CIDR  = "10.244.0.0/16"
 SVC_NW_CIDR  = "10.96.0.0/12"
 
 DOCKER_VER = "20.10.16"
+CRIDOCKERD_VER = "0.2.1"
 KUBE_VER   = "1.21.9"
 CONTAINERD_VER = "1.5.8"
 BUILDKIT_VER = "0.9.3"
@@ -116,6 +117,55 @@ mkdir -p /etc/systemd/system/docker.service.d
 systemctl daemon-reload
 systemctl enable docker && systemctl restart docker
 
+## https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
+vercomp () {
+    if [[ \$1 == \$2 ]]
+    then
+        return 0
+    fi
+    local IFS=.
+    local i ver1=(\$1) ver2=(\$2)
+    # fill empty fields in ver1 with zeros
+    for ((i=\${#ver1[@]}; i<\${#ver2[@]}; i++))
+    do
+        ver1[i]=0
+    done
+    for ((i=0; i<\${#ver1[@]}; i++))
+    do
+        if [[ -z \${ver2[i]} ]]
+        then
+            # fill empty fields in ver2 with zeros
+            ver2[i]=0
+        fi
+        if ((10#\${ver1[i]} > 10#\${ver2[i]}))
+        then
+            return 1
+        fi
+        if ((10#\${ver1[i]} < 10#\${ver2[i]}))
+        then
+            return 2
+        fi
+    done
+    return 0
+}
+
+vercomp "#{KUBE_VER}" "1.24"
+compVal="\$?"
+if [ "\$compVal" = "1" ] || [ "\$compVal" = "0" ] ;then
+  # install cri-dockerd
+  curl -fsSL #{CURL_EXTRA_ARGS} https://github.com/Mirantis/cri-dockerd/releases/download/v#{CRIDOCKERD_VER}/cri-dockerd-#{CRIDOCKERD_VER}.amd64.tgz | tar -xvz --strip-components=1 -C /usr/local/bin
+  chmod +x /usr/local/bin/cri-dockerd
+
+  # https://github.com/Mirantis/cri-dockerd/blob/master/README.md#build-and-install
+  curl -fsSL #{CURL_EXTRA_ARGS} https://github.com/Mirantis/cri-dockerd/raw/v#{CRIDOCKERD_VER}/packaging/systemd/cri-docker.service -o /etc/systemd/system/cri-docker.service
+  curl -fsSL #{CURL_EXTRA_ARGS} https://github.com/Mirantis/cri-dockerd/raw/v#{CRIDOCKERD_VER}/packaging/systemd/cri-docker.socket -o /etc/systemd/system/cri-docker.socket
+
+  sed -i -e 's,/usr/bin/cri-dockerd,/usr/local/bin/cri-dockerd --pod-infra-container-image registry.aliyuncs.com/google_containers/pause:3.7,' /etc/systemd/system/cri-docker.service
+  cri-dockerd --version
+  systemctl daemon-reload
+  systemctl enable cri-docker.service
+  systemctl enable --now cri-docker.socket
+fi
 SCRIPT
 
 
@@ -241,8 +291,33 @@ set -eo pipefail
 
 discovery_token_ca_cert_hash="$(grep 'discovery-token-ca-cert-hash' /vagrant/kubeadm.log | head -n1 | awk '{print $2}')"
 print_join_apiserver="$(grep 'kubeadm join' /vagrant/kubeadm.log  |head -n1 |awk '{print $3}')"
-kubeadm reset -f
-kubeadm join ${print_join_apiserver} --token #{KUBE_TOKEN} --discovery-token-ca-cert-hash ${discovery_token_ca_cert_hash}
+kubeadm reset -f $(if systemctl is-active cri-docker.socket &> /dev/null;then echo "--cri-socket unix:///var/run/cri-dockerd.sock ";fi)
+
+nodeRegistration=""
+if systemctl is-active cri-docker.socket &> /dev/null ;then
+nodeRegistration=$(cat <<"EOF"
+nodeRegistration:
+  criSocket: /var/run/cri-dockerd.sock
+  kubeletExtraArgs:
+    container-runtime: remote
+    container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
+EOF
+)
+fi
+
+cat > /tmp/kubeadm-config.yaml <<EOF
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: JoinConfiguration
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: ${print_join_apiserver}
+    caCertHashes: ["${discovery_token_ca_cert_hash}"]
+    token: #{KUBE_TOKEN}
+${nodeRegistration}
+EOF
+
+cat /tmp/kubeadm-config.yaml
+kubeadm join --config=/tmp/kubeadm-config.yaml
 SCRIPT
 
 single_master_script = <<SCRIPT
@@ -251,7 +326,7 @@ single_master_script = <<SCRIPT
 set -eo pipefail
 
 
-kubeadm reset -f
+kubeadm reset -f $(if systemctl is-active cri-docker.socket &> /dev/null;then echo "--cri-socket unix:///var/run/cri-dockerd.sock ";fi)
 
 mkdir -p /etc/kubernetes/pki/etcd
 pushd /etc/kubernetes/pki > /dev/null || exit
@@ -267,6 +342,19 @@ ls -l /etc/kubernetes/pki
 
 ip4=\$(ip -o -4 addr list #{NODE_INTERFACE} | head -n1 | awk '{print \$4}' |cut -d/ -f1);
 
+nodeRegistration=""
+if systemctl is-active cri-docker.socket &> /dev/null ;then
+nodeRegistration=$(cat <<"EOF"
+nodeRegistration:
+  criSocket: /var/run/cri-dockerd.sock
+  kubeletExtraArgs:
+    container-runtime: remote
+    container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
+EOF
+)
+fi
+
+
 cat > /tmp/kubeadm-config.yaml <<EOF
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: InitConfiguration
@@ -276,6 +364,7 @@ bootstrapTokens:
 localAPIEndpoint:
   advertiseAddress: ${ip4}
   bindPort: 6443
+${nodeRegistration}
 ---
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: ClusterConfiguration
@@ -311,7 +400,7 @@ clusterDNS:
   - 10.96.0.10
 EOF
 
-#controlPlaneEndpoint: "#{LOAD_BALANCER_IP}:#{LOAD_BALANCER_PORT}"
+cat /tmp/kubeadm-config.yaml
 kubeadm init --config=/tmp/kubeadm-config.yaml | tee /vagrant/kubeadm.log
 
 mkdir -p $HOME/.kube
@@ -433,6 +522,19 @@ EOF
 systemctl restart haproxy
 
 if [ ${vrrp_state} = "MASTER" ]; then
+
+nodeRegistration=""
+if systemctl is-active cri-docker.socket &> /dev/null ;then
+nodeRegistration=$(cat <<"EOF"
+nodeRegistration:
+  criSocket: /var/run/cri-dockerd.sock
+  kubeletExtraArgs:
+    container-runtime: remote
+    container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
+EOF
+)
+fi
+
   cat > /tmp/kubeadm-config.yaml <<EOF
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: InitConfiguration
@@ -442,6 +544,7 @@ bootstrapTokens:
 localAPIEndpoint:
   advertiseAddress: ${ip4}
   bindPort: 6443
+${nodeRegistration}
 ---
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: ClusterConfiguration
@@ -479,7 +582,7 @@ clusterDNS:
 EOF
 
   status "running kubeadm init on the first master node.."
-  kubeadm reset -f
+  kubeadm reset -f $(if systemctl is-active cri-docker.socket &> /dev/null;then echo "--cri-socket unix:///var/run/cri-dockerd.sock ";fi)
 
   mkdir -p /etc/kubernetes/pki/etcd
   pushd /etc/kubernetes/pki > /dev/null || exit
@@ -492,6 +595,7 @@ EOF
   popd > /dev/null || exit
   ls -l /etc/kubernetes/pki
 
+  cat /tmp/kubeadm-config.yaml
   kubeadm init --config=/tmp/kubeadm-config.yaml --upload-certs | tee /vagrant/kubeadm.log
 
   mkdir -p $HOME/.kube
@@ -508,11 +612,37 @@ else
   status "joining master node.."
   discovery_token_ca_cert_hash="$(grep 'discovery-token-ca-cert-hash' /vagrant/kubeadm.log | head -n1 | awk '{print $2}')"
   certificate_key="$(grep 'certificate-key' /vagrant/kubeadm.log | head -n1 | awk '{print $3}')"
-  kubeadm reset -f
-  kubeadm join #{LOAD_BALANCER_IP}:#{LOAD_BALANCER_PORT} --token #{KUBE_TOKEN} \
-    --discovery-token-ca-cert-hash ${discovery_token_ca_cert_hash} \
-    --control-plane --certificate-key ${certificate_key} \
-    --apiserver-advertise-address ${ip4}
+  kubeadm reset -f $(if systemctl is-active cri-docker.socket &> /dev/null;then echo "--cri-socket unix:///var/run/cri-dockerd.sock ";fi)
+
+  nodeRegistration=""
+  if systemctl is-active cri-docker.socket &> /dev/null ;then
+  nodeRegistration=$(cat <<"EOF"
+nodeRegistration:
+  criSocket: /var/run/cri-dockerd.sock
+  kubeletExtraArgs:
+    container-runtime: remote
+    container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
+EOF
+)
+fi
+
+  cat > /tmp/kubeadm-config.yaml <<EOF
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: JoinConfiguration
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: #{LOAD_BALANCER_IP}:#{LOAD_BALANCER_PORT}
+    caCertHashes: ["${discovery_token_ca_cert_hash}"]
+    token: #{KUBE_TOKEN}
+controlPlane:
+  localAPIEndpoint:
+    advertiseAddress: ${ip4}
+    bindPort: 6443
+  certificateKey: ${certificate_key}
+${nodeRegistration}
+EOF
+  cat /tmp/kubeadm-config.yaml
+  kubeadm join --config=/tmp/kubeadm-config.yaml
 fi
 SCRIPT
 
