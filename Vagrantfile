@@ -238,8 +238,8 @@ SCRIPT
 install_crio = <<SCRIPT
 #!/usr/bin/env bash
 criourl="https://storage.googleapis.com/k8s-conform-cri-o/artifacts/cri-o.amd64.v#{CRIO_VER}.tar.gz"
-criourl=$(curl -fsSL https://api.github.com/repos/cri-o/cri-o/releases/tags/v#{CRIO_VER} | jq '.body' | grep -oP "https[^ ]*\.gz" | grep amd64)
-
+criourl=$(curl -fsSL https://api.github.com/repos/cri-o/cri-o/releases/tags/v#{CRIO_VER} | jq '.body' | grep -oP "https[^ ]*\.gz" | grep amd64 | head -n1)
+echo "\$criourl"
 curl #{CURL_EXTRA_ARGS} --retry 3 -o /tmp/cri-o.amd64.v#{CRIO_VER}.tar.gz -SL --compressed --progress-bar $criourl
 
 tar -xv -C /tmp -f /tmp/cri-o.amd64.v#{CRIO_VER}.tar.gz
