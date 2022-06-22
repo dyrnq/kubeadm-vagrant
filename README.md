@@ -41,7 +41,7 @@ kubectl get nodes
 
 ### calico
 
-Change `POD_NETWORK` to `/vagrant/kube-calico.yaml` to run use calico. See origin [calico.yaml](https://docs.projectcalico.org/manifests/calico.yaml)
+Change `POD_NETWORK` to `/vagrant/kube-calico.yaml` to run use calico. See origin [calico.yaml](https://docs.projectcalico.org/archive/v3.21/manifests/calico.yaml)
 
 `kube-calico.yml` changes: explicitly assign env `CALICO_IPV4POOL_CIDR` and `IP_AUTODETECTION_METHOD`
 
