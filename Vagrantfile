@@ -8,14 +8,14 @@ NODE_IP_NW   = "192.168.26."
 POD_NW_CIDR  = "10.244.0.0/16"
 SVC_NW_CIDR  = "10.96.0.0/12"
 
-DOCKER_VER = "20.10.16"
-CRIDOCKERD_VER = "0.2.1"
-KUBE_VER   = "1.21.9"
-CONTAINERD_VER = "1.5.8"
+DOCKER_VER = "20.10.17"
+CRIDOCKERD_VER = "0.2.2"
+KUBE_VER   = "1.21.14"
+CONTAINERD_VER = "1.5.13"
 BUILDKIT_VER = "0.9.3"
 CRIO_VER = "1.21.4"
 NERDCTL_VER = "0.13.0"
-HELM_VER = "3.7.2"
+HELM_VER = "3.9.0"
 KUBE_TOKEN = "ayngk7.m1555duk5x2i3ctt"
 IMAGE_REPO = "registry.aliyuncs.com/google_containers"
 #IMAGE_REPO = "k8s.gcr.io"
@@ -42,8 +42,7 @@ timedatectl set-timezone "Asia/Shanghai"
 # timedatectl set-local-rtc no
 # timedatectl set-ntp off
 
-sed -i "s@http://.*archive.ubuntu.com@http://mirrors.ustc.edu.cn@g" /etc/apt/sources.list && \
-sed -i "s@http://.*security.ubuntu.com@http://mirrors.ustc.edu.cn@g" /etc/apt/sources.list;
+sed -i.bak 's/archive.ubuntu.com/mirrors.ustc.edu.cn/g' /etc/apt/sources.list;
 apt update;
 DEBIAN_FRONTEND=noninteractive apt -y upgrade;
 DEBIAN_FRONTEND=noninteractive apt install -y apt-transport-https ca-certificates curl net-tools jq make wget ipvsadm conntrack;
