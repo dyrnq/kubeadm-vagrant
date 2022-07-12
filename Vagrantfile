@@ -160,6 +160,7 @@ if [ "\$compVal" = "1" ] || [ "\$compVal" = "0" ] ;then
   curl -fsSL #{CURL_EXTRA_ARGS} https://github.com/Mirantis/cri-dockerd/raw/v#{CRIDOCKERD_VER}/packaging/systemd/cri-docker.socket -o /etc/systemd/system/cri-docker.socket
 
   sed -i -e 's,/usr/bin/cri-dockerd,/usr/local/bin/cri-dockerd --pod-infra-container-image registry.aliyuncs.com/google_containers/pause:3.7,' /etc/systemd/system/cri-docker.service
+  sed -i.bak -e 's,/usr/bin/cri-dockerd,/usr/local/bin/cri-dockerd --pod-infra-container-image docker.io/dyrnq/pause:3.7,' -e 's,--network-plugin=,--network-plugin=cni,' /etc/systemd/system/cri-docker.service
   cri-dockerd --version
   systemctl daemon-reload
   systemctl enable cri-docker.service
