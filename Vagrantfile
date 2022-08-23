@@ -412,6 +412,7 @@ sudo cp -Rf /etc/kubernetes/admin.conf /home/vagrant/.kube/config
 sudo chown -R vagrant:vagrant /home/vagrant/.kube/
 
 kubectl apply -f #{POD_NETWORK}
+curl #{CURL_EXTRA_ARGS} -fsSL https://github.com/dyrnq/dist/raw/main/kubelet-csr-approver/latest/10-deployments.yaml  | kubectl apply -f -
 SCRIPT
 
 multi_master_script = <<SCRIPT
@@ -608,6 +609,7 @@ EOF
   
   status "installing flannel network addon.."
   kubectl apply -f #{POD_NETWORK}
+  curl #{CURL_EXTRA_ARGS} -fsSL https://github.com/dyrnq/dist/raw/main/kubelet-csr-approver/latest/10-deployments.yaml  | kubectl apply -f -
 else
   status "joining master node.."
   discovery_token_ca_cert_hash="$(grep 'discovery-token-ca-cert-hash' /vagrant/kubeadm.log | head -n1 | awk '{print $2}')"
