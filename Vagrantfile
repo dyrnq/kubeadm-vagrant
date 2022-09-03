@@ -70,13 +70,14 @@ systemctl daemon-reload
 systemctl enable systemd-modules-load.service && systemctl restart systemd-modules-load.service
 
 # retry three times
-apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 8B57C5C2836F4BEB || \
-apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 8B57C5C2836F4BEB || \
-apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 8B57C5C2836F4BEB
+# apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 8B57C5C2836F4BEB || \
+# apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 8B57C5C2836F4BEB || \
+# apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 8B57C5C2836F4BEB
 
-curl -s https://repo.huaweicloud.com/kubernetes/apt/doc/apt-key.gpg | apt-key add -
+#curl -s https://repo.huaweicloud.com/kubernetes/apt/doc/apt-key.gpg | apt-key add -
+curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://repo.huaweicloud.com/kubernetes/apt/doc/apt-key.gpg
 cat > /etc/apt/sources.list.d/kubernetes.list <<EOF
-deb https://mirrors.ustc.edu.cn/kubernetes/apt kubernetes-xenial main
+deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://mirrors.ustc.edu.cn/kubernetes/apt kubernetes-xenial main
 EOF
 apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet=#{KUBE_VER}-00 kubeadm=#{KUBE_VER}-00 kubectl=#{KUBE_VER}-00
 
