@@ -380,12 +380,27 @@ controllerManager:
   extraArgs:
     cluster-signing-duration: 438000h
     v: "4"
+  extraVolumes:
+  - hostPath: /etc/localtime
+    mountPath: /etc/localtime
+    name: localtime
+    readOnly: true
 scheduler:
   extraArgs:
     v: "4"
+  extraVolumes:
+  - hostPath: /etc/localtime
+    mountPath: /etc/localtime
+    name: localtime
+    readOnly: true
 apiServer:
   extraArgs:
     v: "4"
+  extraVolumes:
+  - hostPath: /etc/localtime
+    mountPath: /etc/localtime
+    name: localtime
+    readOnly: true
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
@@ -562,12 +577,27 @@ controllerManager:
   extraArgs:
     cluster-signing-duration: 438000h
     v: "4"
+  extraVolumes:
+  - hostPath: /etc/localtime
+    mountPath: /etc/localtime
+    name: localtime
+    readOnly: true
 scheduler:
   extraArgs:
     v: "4"
+  extraVolumes:
+  - hostPath: /etc/localtime
+    mountPath: /etc/localtime
+    name: localtime
+    readOnly: true
 apiServer:
   extraArgs:
     v: "4"
+  extraVolumes:
+  - hostPath: /etc/localtime
+    mountPath: /etc/localtime
+    name: localtime
+    readOnly: true
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
@@ -608,8 +638,9 @@ EOF
   sudo cp -Rf /etc/kubernetes/admin.conf /home/vagrant/.kube/config
   sudo chown -R vagrant:vagrant /home/vagrant/.kube/
   
-  status "installing flannel network addon.."
+  status "installing network addon.."
   kubectl apply -f #{POD_NETWORK}
+  status "installing kubelet-csr-approver addon.."
   curl #{CURL_EXTRA_ARGS} -fsSL https://github.com/dyrnq/dist/raw/main/kubelet-csr-approver/latest/10-deployments.yaml  | kubectl apply -f -
 else
   status "joining master node.."
