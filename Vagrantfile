@@ -300,8 +300,8 @@ nodeRegistration=$(cat <<"EOF"
 nodeRegistration:
   criSocket: /var/run/cri-dockerd.sock
   kubeletExtraArgs:
-    container-runtime: remote
-    container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
+    # container-runtime: remote
+    # container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
 EOF
 )
 fi
@@ -349,8 +349,8 @@ nodeRegistration=$(cat <<"EOF"
 nodeRegistration:
   criSocket: /var/run/cri-dockerd.sock
   kubeletExtraArgs:
-    container-runtime: remote
-    container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
+    # container-runtime: remote
+    # container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
 EOF
 )
 fi
@@ -546,8 +546,8 @@ nodeRegistration=$(cat <<"EOF"
 nodeRegistration:
   criSocket: /var/run/cri-dockerd.sock
   kubeletExtraArgs:
-    container-runtime: remote
-    container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
+    # container-runtime: remote
+    # container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
 EOF
 )
 fi
@@ -654,8 +654,8 @@ else
 nodeRegistration:
   criSocket: /var/run/cri-dockerd.sock
   kubeletExtraArgs:
-    container-runtime: remote
-    container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
+    # container-runtime: remote
+    # container-runtime-endpoint: unix:///var/run/cri-dockerd.sock
 EOF
 )
 fi
